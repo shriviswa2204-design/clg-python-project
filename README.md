@@ -1,2 +1,2 @@
-# clg-python-project(viswa gay)
+# clg-python-project
 railway project(irctc)
