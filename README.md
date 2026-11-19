@@ -1,2 +1,2 @@
-# clg-python-project (bournvita singers)
+# clg-python-project
 railway project(irctc)
