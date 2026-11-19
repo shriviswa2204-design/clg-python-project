@@ -1,2 +1,2 @@
-# clg-python-project (goonu is gay)
+# clg-python-project (bournvita singers)
 railway project(irctc)
