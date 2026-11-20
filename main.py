@@ -1,6 +1,7 @@
 import json
 import os
 from datetime import date
+from tabnanny import check
 from typing import Literal, Optional
 
 from fastapi import FastAPI, Header, HTTPException, Query, Response
@@ -12,6 +13,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TRAINS_FILE = os.path.join(BASE_DIR, "trains.json")
 PASSENGERS_FILE = os.path.join(BASE_DIR, "passengers.json")
 TICKETS_FILE = os.path.join(BASE_DIR, "tickets.json")
+VALID_ROLES = ["admin", "passenger"]
 
 #STORAGE
 STARTER_TRAINS = [
@@ -85,10 +87,22 @@ class PassengerOut(BaseModel):
 #
 
 #HELPERS 
-
+def check_role(x_role, allowed):
+    """401 = we do not know who you are. 403 = we know, but you may not."""
+    if x_role is None or x_role not in VALID_ROLES:
+        raise HTTPException(
+            status_code=401,
+            detail="Send the header X-Role with the value admin or passenger",
+        )
+    if x_role not in allowed:
+        raise HTTPException(
+            status_code=403,
+            detail=f"The role '{x_role}' is not allowed to do this",
+        )
 # ENDPOINTS -M4
-@app.post("/passengers", response_model=PassengerOut, status_code=201)
-def create_passenger(passenger: PassengerIn):
+@app.post("/passenger", response_model=PassengerOut, status_code=201)
+def create_passenger(passenger: PassengerIn, x_role: str = Header(None)):
+    check_role(x_role, ["admin", "passenger"])
     largest_id = 0
     for p in passengers:               # Dictionary used to find largest id, we will assign +1 to the largest so far
         if p["id"] > largest_id:
@@ -100,12 +114,14 @@ def create_passenger(passenger: PassengerIn):
     save_data(PASSENGERS_FILE, passengers)
     return add_passenger       
 
-@app.get("/passengers")
-def get_passenegers():
+@app.get("/passenger_list")
+def get_passenegers(x_role: str = Header(None)):
+    check_role(x_role, ["admin"])
     return passengers
 
-@app.get("/passengers/{passenger_id}")
-def get_passenger(passenger_id :int):
+@app.get("/passenger/{passenger_id}")
+def get_passenger(passenger_id :int, x_role: str = Header(None)):
+    check_role(x_role, ["admin", "passenger"])
     for p in passengers:
         if p["id"] == passenger_id:
             return p
