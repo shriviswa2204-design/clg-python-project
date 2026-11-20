@@ -165,7 +165,7 @@ def cancel_ticket(ticket_id:int, x_role:Optional[str]=Header(None)):
     #setting status,refund,cancelled_date
     tickets[ticket_id-1]["status"]="cancelled"
     tickets[ticket_id-1]["refund"]=refund
-    tickets[ticket_id-1]["cancelled on"]=date.today()
+    tickets[ticket_id-1]["cancelled on"]=date.today().isoformat()
     save_data(TICKETS_FILE,tickets)
     return tickets[ticket_id-1]
 
