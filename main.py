@@ -94,7 +94,7 @@ def count_status(train_id, travel_date, status):
 
 
 #ENDPOINTS
-app =FastAPI()
+app =FastAPI(title="Railway API",)
 #book ticket 
 @app.post("/tickets",status_code=201,response_model=TicketOut)
 def create_ticket(ticket:TicketIn, x_role:Optional[str]=Header(None)):
@@ -162,9 +162,10 @@ def cancel_ticket(ticket_id:int, x_role:Optional[str]=Header(None)):
         for t in tickets:
             if t["status"]=="waiting":
                 t["status"]="booked"
-    #setting status
+    #setting status,refund,cancelled_date
     tickets[ticket_id-1]["status"]="cancelled"
     tickets[ticket_id-1]["refund"]=refund
+    tickets[ticket_id-1]["cancelled on"]=date.today()
     save_data(TICKETS_FILE,tickets)
     return tickets[ticket_id-1]
 
