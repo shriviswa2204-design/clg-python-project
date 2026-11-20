@@ -1,0 +1,34 @@
+[
+  {
+    "id": 1,
+    "name": "Shatabdi Express",
+    "source": "Chennai",
+    "destination": "Bengaluru",
+    "seats": 3,
+    "fare": 800
+  },
+  {
+    "id": 2,
+    "name": "Rajdhani Express",
+    "source": "Mumbai",
+    "destination": "New Delhi",
+    "seats": 5,
+    "fare": 1500
+  },
+  {
+    "id": 3,
+    "name": "Mysuru Express",
+    "source": "Bengaluru",
+    "destination": "Mysuru",
+    "seats": 4,
+    "fare": 250
+  },
+  {
+    "id": 4,
+    "name": "Vande Bharat",
+    "source": "Chennai",
+    "destination": "Mysuru",
+    "seats": 6,
+    "fare": 1200
+  }
+]
