@@ -15,10 +15,10 @@ PASSENGERS_FILE = os.path.join(BASE_DIR, "passengers.json")
 TICKETS_FILE = os.path.join(BASE_DIR, "tickets.json")
 
 STARTER_TRAINS = [
-    {"id": 1, "name": "Shatabdi Express", "source": "Chennai", "destination": "Bengaluru", "seats": 3, "fare": 800, "date": 2026-12-11},
-    {"id": 2, "name": "Rajdhani Express", "source": "Mumbai", "destination": "New Delhi", "seats": 5, "fare": 1500, "date": 2026-11-29},
-    {"id": 3, "name": "Mysuru Express", "source": "Bengaluru", "destination": "Mysuru", "seats": 4, "fare": 250, "date": 2026-12-7},
-    {"id": 4, "name": "Vande Bharat", "source": "Chennai", "destination": "Mysuru", "seats": 6, "fare": 1200, "date": 2026-12-20},
+    {"id": 1, "name": "Shatabdi Express", "source": "Chennai", "destination": "Bengaluru", "seats": 3, "fare": 800, "date": "2026-12-11"},
+    {"id": 2, "name": "Rajdhani Express", "source": "Mumbai", "destination": "New Delhi", "seats": 5, "fare": 1500, "date": "2026-11-29"},
+    {"id": 3, "name": "Mysuru Express", "source": "Bengaluru", "destination": "Mysuru", "seats": 4, "fare": 250, "date": "2026-12-7"},
+    {"id": 4, "name": "Vande Bharat", "source": "Chennai", "destination": "Mysuru", "seats": 6, "fare": 1200, "date": "2026-12-20"},
 ]
 STARTER_PASSENGERS = [
     {"id": 1, "name": "Asha Rao", "age": 28},
@@ -80,6 +80,49 @@ class TrainOut(BaseModel):
     fare: int
     seats_left: Optional[int] = None     # calculated for a ?date=, not stored
     date: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")   # travel date, e.g. 2026-12-05
+#HELPERS
+
+def train_active(train_id):
+    has_active = False
+    for tk in tickets:
+        if tk["train_id"] == train_id:
+            if tk["status"] == "confirmed": 
+                has_active = True
+            if tk["status"] == "waiting":
+                has_active = True
+    return has_active
+
+def train_update(body,changes):
+    """Collect only the fields the client sent, and return them as a dict."""
+    if body.name is not None:
+        changes["name"] = body.name
+    if body.source is not None:
+        changes["source"] = body.source
+    if body.destination is not None:
+        changes["destination"] = body.destination
+    if body.seats is not None:
+        changes["seats"] = body.seats
+    if body.fare is not None:
+        changes["fare"] = body.fare
+
+    if changes == body:
+        raise HTTPException(status_code=422, detail="Send at least one field to change")
+
+    return changes
+
+def check_role(x_role, allowed):
+    """401 = we do not know who you are. 403 = we know, but you may not."""
+    if x_role is None or (x_role != "admin" and x_role != "passenger"):
+        raise HTTPException(
+            status_code=401,
+            detail="Send the header X-Role with the value admin or passenger",
+        )
+    if x_role not in allowed:
+        raise HTTPException(
+            status_code=403,
+            detail=f"The role '{x_role}' is not allowed to do this",
+        )
+
 
 app = FastAPI(title= "Railway Reservation API")   
 
@@ -118,17 +161,47 @@ def delete_train(train_id: int, x_role: Optional[str] = Header(default=None)):
     if train is None:
         raise HTTPException(status_code=404, detail="Train not found")
     #trains that are confirmed or in waiting list cannot be removed
-    has_active = False
-    for tk in tickets:
-        if tk["train_id"] == train_id:
-            if tk["status"] == "confirmed": 
-                has_active = True
-            if tk["status"] == "waiting":
-                has_active = True
-    if has_active:
+    
+    if train_active(train_id):
         raise HTTPException(status_code=409, detail="Train has active tickets")
     #removing train if all checkpoints have passed
     trains.remove(train)
     save_data(TRAINS_FILE,trains)
 
     return Response(status_code=204)
+
+@app.patch("/trains/{train_id}", response_model=TrainOut)
+def patch_train(train_id: int, body: TrainUpdate, x_role: Optional[str] = Header(default=None)):
+    #checking role of user
+    check_role(x_role, ["admin"])
+    changes={}
+    train = {}
+    #noting down the changes in a dictionary called changes and if train exists
+    for t in trains:
+        if t["id"]==train_id:
+            changes=dict(t)
+            train=dict(t)
+    train_update(body,changes)
+    #checking booking status
+    if "seats" in changes:
+        per_date = {}
+        for tk in tickets:
+            if tk["train_id"] == train_id and tk["status"] == "confirmed":
+                if tk["date"] in per_date:
+                    per_date[tk["date"]] = per_date[tk["date"]] + 1
+                else:
+                    per_date[tk["date"]] = 1
+        highest = 0
+        for count in per_date.values():
+            if count > highest:
+                highest = count
+        if changes["seats"] < highest:
+            raise HTTPException(status_code=409, detail="Fewer seats than already-confirmed tickets")
+    #trains can't be in duplicates
+    if changes in trains:
+        raise HTTPException(status_code=409, detail="This train already exists")
+    #saving the train if every checkpoint has passed
+    trains.remove(train)
+    trains.append(changes)
+    save_data(TRAINS_FILE,trains)
+    return changes
