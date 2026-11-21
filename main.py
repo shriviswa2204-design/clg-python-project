@@ -1,9 +1,16 @@
-# 1. Your starter data (goes in Section 2)
+from fastapi import FastAPI, HTTPException, Header
+from pydantic import BaseModel, Field, StrictInt
+from typing import Optional
+app = FastAPI()
 STARTER_TRAINS = [
     {"id": 1, "name": "Shatabdi Express", "source": "Chennai", "destination": "Bengaluru", "seats": 3, "fare": 800},
     {"id": 2, "name": "Rajdhani Express", "source": "Mumbai", "destination": "New Delhi", "seats": 5, "fare": 1500},
     {"id": 3, "name": "Mysuru Express", "source": "Bengaluru", "destination": "Mysuru", "seats": 4, "fare": 250},
 ]
+trains = STARTER_TRAINS.copy()
+TRAINS_FILE = "trains.json"
+def next_id(items):
+    return max((item["id"] for item in items),default = 0) + 1
 
 # 2. Your models (goes in Section 3)
 class TrainIn(BaseModel):
