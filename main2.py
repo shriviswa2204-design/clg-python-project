@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 #SETTINGS
 WAITING_LIMIT = 5
 SENIOR_AGE = 60
+SENIOR_DISCOUNT=40
 CANCEL_FEE=50
 VALID_ROLES = ["admin", "passenger"]
 
@@ -143,10 +144,9 @@ def train_active(train_id):
 
 def train_update(body, changes):
     """Collect only the fields the client sent, and return them as a dict."""
-    before = dict(changes)
     if body.name is not None:
         changes["name"] = body.name
-    if body.source is not None:
+    if body.source is not None :
         changes["source"] = body.source
     if body.destination is not None:
         changes["destination"] = body.destination
@@ -156,8 +156,8 @@ def train_update(body, changes):
         changes["fare"] = body.fare
     if body.date is not None:
         changes["date"] = body.date
-
-    if changes == before:
+    test=dict(body)
+    if list(test.values())==[None,None,None,None,None,None]:
         raise HTTPException(status_code=422, detail="Send at least one field to change")
 
     return changes
@@ -263,7 +263,7 @@ def patch_train(train_id: int, body: TrainUpdate, x_role: Optional[str] = Header
     return changes
 
 # passenger data
-@app.post("/passenger", response_model=PassengerOut, status_code=201)
+@app.post("/passengers", response_model=PassengerOut, status_code=201)
 def create_passenger(passenger: PassengerIn, x_role: str = Header(None)):
     check_role(x_role, ["admin", "passenger"])
     add_passenger = {"id": next_id(passengers), "name": passenger.name, "age": passenger.age}
@@ -276,7 +276,7 @@ def get_passengers(x_role: str = Header(None)):
     check_role(x_role, ["admin"])
     return passengers
 
-@app.get("/passenger/{passenger_id}")
+@app.get("/passengers/{passenger_id}")
 def get_passenger(passenger_id: int, x_role: str = Header(None)):
     check_role(x_role, ["admin", "passenger"])
     for p in passengers:
@@ -368,7 +368,7 @@ def create_ticket(ticket: TicketIn, x_role: Optional[str] = Header(None)):
 
     fare = train["fare"]
     if passenger["age"] >= SENIOR_AGE:
-        fare = int(fare * 0.6)
+        fare = int(fare * (100-SENIOR_DISCOUNT)//100)
 
     ticket_out = {
         "id": next_id(tickets),
